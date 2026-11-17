@@ -1,0 +1,1767 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Social Network Analysis Using Graph Theory</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* ══════════════════════════════════════════════
+       MATERIAL-INSPIRED DESIGN TOKENS
+       Light palette  → Material You / M3 surface tones
+       Dark palette   → M3 dark surface hierarchy
+    ══════════════════════════════════════════════ */
+    :root {
+      /* Core */
+      --ink:            #1a1c2e;
+      --ink-secondary:  #44475a;
+      --brand:          #5c6bc0;   /* M3 Primary – Indigo 500   */
+      --brand-dark:     #3949ab;   /* Indigo 700                */
+      --brand-light:    #e8eaf6;   /* Indigo 50                 */
+      --brand-soft:     #c5cae9;   /* Indigo 100                */
+      --accent:         #26a69a;   /* M3 Tertiary – Teal 400    */
+      --accent-soft:    #e0f2f1;   /* Teal 50                   */
+      --warn:           #f57c00;   /* Orange 700                */
+      --warn-soft:      #fff3e0;   /* Orange 50                 */
+      --danger:         #c62828;   /* Red 800                   */
+      --danger-soft:    #ffebee;   /* Red 50                    */
+
+      /* Surfaces (M3 surface tones) */
+      --surface:        #ffffff;
+      --surface-1:      #f5f5f5;   /* elevation 1 */
+      --surface-2:      #eeeeee;   /* elevation 2 */
+      --surface-muted:  #fafafa;
+      --line:           #e0e0e0;
+      --line-strong:    #bdbdbd;
+      --muted-text:     #757575;
+      --body-bg:        #f0f2f5;
+
+      /* Table-specific */
+      --tbl-head-bg:    #3949ab;   /* Indigo 700  */
+      --tbl-head-fg:    #ffffff;
+      --tbl-row-odd:    #ffffff;
+      --tbl-row-even:   #f5f5ff;   /* very faint indigo tint */
+      --tbl-row-hover:  #e8eaf6;
+      --tbl-row-active: #fff8e1;   /* amber 50 */
+      --tbl-border:     #e0e0e0;
+      --tbl-mono:       #37474f;
+    }
+
+    html.dark {
+      --ink:            #eceff1;
+      --ink-secondary:  #b0bec5;
+      --brand:          #7986cb;   /* Indigo 400 */
+      --brand-dark:     #5c6bc0;
+      --brand-light:    #1a237e22;
+      --brand-soft:     #283593;
+      --accent:         #4db6ac;   /* Teal 300 */
+      --accent-soft:    #00251a44;
+      --warn:           #ffb74d;   /* Orange 300 */
+      --warn-soft:      #e65100;
+      --danger:         #ef9a9a;
+      --danger-soft:    #b71c1c33;
+
+      --surface:        #1e1e2e;
+      --surface-1:      #252535;
+      --surface-2:      #2a2a3e;
+      --surface-muted:  #181824;
+      --line:           #333350;
+      --line-strong:    #4a4a6a;
+      --muted-text:     #90a4ae;
+      --body-bg:        #12121f;
+
+      --tbl-head-bg:    #283593;
+      --tbl-head-fg:    #e8eaf6;
+      --tbl-row-odd:    #1e1e2e;
+      --tbl-row-even:   #22223299;
+      --tbl-row-hover:  #2a2a4a;
+      --tbl-row-active: #3a2d0a;
+      --tbl-border:     #333350;
+      --tbl-mono:       #b0bec5;
+    }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--body-bg);
+      color: var(--ink);
+      transition: background 0.2s, color 0.2s;
+    }
+    html.light body {
+      background:
+        radial-gradient(circle at 8% 0%, rgba(92,107,192,0.08), transparent 28rem),
+        radial-gradient(circle at 92% 8%, rgba(38,166,154,0.07), transparent 24rem),
+        #f0f2f5;
+    }
+    html.dark body {
+      background:
+        radial-gradient(circle at 8% 0%, rgba(121,134,203,0.10), transparent 28rem),
+        radial-gradient(circle at 92% 8%, rgba(77,182,172,0.07), transparent 24rem),
+        #12121f;
+    }
+
+    button, select, input { font: inherit; }
+    /* Uniform control heights — override Tailwind where needed */
+    button { min-height: 0; letter-spacing: -0.01em; cursor: pointer; }
+    select { min-height: 0; cursor: pointer; }
+    input  { min-height: 0; }
+    /* Active-state depth for all interactive controls */
+    button:active { opacity: 0.88; }
+    button:focus-visible, select:focus-visible, input:focus-visible,
+    label:has(input:focus-visible) {
+      outline: 3px solid rgba(99,102,241,0.35);
+      outline-offset: 2px;
+    }
+
+    /* ── Header ── */
+    .app-header {
+      background:
+        radial-gradient(circle at 78% -120%, rgba(34,211,238,0.22), transparent 26rem),
+        linear-gradient(110deg, #0f172a 0%, #172554 58%, #0f172a 100%);
+    }
+
+    /* ── Cards ── */
+    .metric-card {
+      transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+    }
+    .metric-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 18px rgba(15,23,42,0.07);
+      border-color: #cbd5e1;
+    }
+    html.dark .metric-card:hover { border-color: #475569; }
+
+    .surface-card {
+      background: var(--surface);
+      border-color: var(--line);
+      box-shadow: 0 8px 22px rgba(15,23,42,0.045);
+      transition: background 0.2s, border-color 0.2s;
+    }
+    html.dark .surface-card {
+      box-shadow: 0 8px 22px rgba(0,0,0,0.3);
+    }
+
+    .section-kicker {
+      color: var(--brand);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    /* ══════════════════════════════════════════════
+       MATERIAL TABLE SYSTEM
+       All data tables use .md-table for consistent
+       sizing, colour, and stripe treatment.
+    ══════════════════════════════════════════════ */
+    .md-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      line-height: 1.5;
+      /* Let the browser size columns from both header and content */
+      table-layout: auto;
+    }
+    /* ── Header ── */
+    .md-table thead tr {
+      background: var(--tbl-head-bg);
+      color: var(--tbl-head-fg);
+    }
+    .md-table thead th {
+      padding: 11px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      border: none;
+      text-align: left;
+      vertical-align: middle;
+    }
+    /* ── Body rows ── */
+    .md-table tbody tr:nth-child(odd)  { background: var(--tbl-row-odd); }
+    .md-table tbody tr:nth-child(even) { background: var(--tbl-row-even); }
+    .md-table tbody tr {
+      transition: background 0.12s;
+      border-bottom: 1px solid var(--tbl-border);
+    }
+    .md-table tbody tr:last-child { border-bottom: none; }
+    .md-table tbody tr:hover { background: var(--tbl-row-hover) !important; }
+    .md-table tbody tr.row-active { background: var(--tbl-row-active) !important; }
+    /* ── Cells ── */
+    .md-table td {
+      padding: 10px 14px;
+      vertical-align: middle;
+      color: var(--ink);
+      font-size: 12.5px;
+      text-align: left;
+      /* prevent cells from collapsing to zero width */
+      min-width: 0;
+    }
+    /* Compact variant for the small dist-array panel */
+    .md-table.md-compact td    { padding: 8px 10px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .md-table.md-compact thead th { padding: 9px 10px; font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── Numeric columns: right-align values, same as header ── */
+    .md-table .col-num        { text-align: right; white-space: nowrap; }
+    .md-table .col-center     { text-align: center; white-space: nowrap; }
+    .md-table .col-nowrap     { white-space: nowrap; }
+
+    /* ── Cell colour roles ── */
+    .md-cell-id      { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--brand-dark); }
+    html.dark .md-cell-id { color: var(--brand); }
+    .md-cell-mono    { font-family: 'JetBrains Mono', monospace; color: var(--tbl-mono); }
+    .md-cell-muted   { color: var(--muted-text); font-size: 12px; }
+    .md-cell-active  { color: #e65100; font-weight: 700; }   /* amber – active vertex */
+    html.dark .md-cell-active { color: #ffb74d; }
+    .md-cell-queued  { color: #00695c; font-weight: 600; }   /* teal – queued */
+    html.dark .md-cell-queued { color: #4db6ac; }
+    .md-cell-visited { color: #2e7d32; font-weight: 600; }   /* green – visited */
+    html.dark .md-cell-visited { color: #81c784; }
+    .md-cell-path    { color: #0277bd; font-weight: 700; }   /* blue – path */
+    html.dark .md-cell-path { color: #4fc3f7; }
+    .md-cell-best    { font-weight: 800; }
+
+    /* ── State badge chips (used in dist table) ── */
+    .chip {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      vertical-align: middle;
+    }
+    .chip-unvisited { background: #eceff1; color: #546e7a; }
+    html.dark .chip-unvisited { background: #263238; color: #90a4ae; }
+    .chip-active  { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
+    html.dark .chip-active  { background: #3a2800; color: #ffb74d; border-color: #e65100; }
+    .chip-queued  { background: #e0f2f1; color: #00695c; border: 1px solid #80cbc4; }
+    html.dark .chip-queued  { background: #002920; color: #4db6ac; border-color: #00695c; }
+    .chip-visited { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+    html.dark .chip-visited { background: #002500; color: #81c784; border-color: #2e7d32; }
+    .chip-path    { background: #e3f2fd; color: #0277bd; border: 1px solid #90caf9; }
+    html.dark .chip-path    { background: #001929; color: #4fc3f7; border-color: #0277bd; }
+
+    /* ── Adjacency matrix cell colouring ── */
+    .mat-cell-one  { background: #e8eaf6; color: #283593; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+    html.dark .mat-cell-one { background: #1a237e44; color: #9fa8da; }
+    .mat-cell-zero { color: #bdbdbd; font-family: 'JetBrains Mono', monospace; }
+    html.dark .mat-cell-zero { color: #37474f; }
+    .mat-cell-deg  { background: #e0f2f1; color: #00695c; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+    html.dark .mat-cell-deg  { background: #00251a44; color: #4db6ac; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--line); }
+    ::-webkit-scrollbar-thumb { background: var(--muted-text); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+    /* ── Graph canvas ── */
+    .graph-grid-bg {
+      background-color: #fbfdff;
+      background-image:
+        linear-gradient(rgba(226,232,240,0.45) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(226,232,240,0.45) 1px, transparent 1px),
+        radial-gradient(#cbd5e1 1px, transparent 1px);
+      background-position: -1px -1px, -1px -1px, 0 0;
+      background-size: 44px 44px, 44px 44px, 22px 22px;
+      transition: background-color 0.2s;
+    }
+    html.dark .graph-grid-bg {
+      background-color: #0f172a;
+      background-image:
+        linear-gradient(rgba(51,65,85,0.5) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(51,65,85,0.5) 1px, transparent 1px),
+        radial-gradient(rgba(71,85,105,0.5) 1px, transparent 1px);
+    }
+    @media (max-width: 640px) {
+      .graph-grid-bg { background-size: 32px 32px, 32px 32px, 16px 16px; }
+    }
+
+    /* ── Metrics bar dynamic tokens ── */
+    .metric-bg-default  { background: var(--surface-muted); border-color: var(--line); }
+    .metric-label       { color: var(--muted-text); }
+    .metric-value       { color: var(--ink); }
+
+    /* ── Workspace tab nav ── */
+    .ws-tab-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 16px;
+      font-size: 13px; font-weight: 600;
+      border-bottom: 2px solid transparent;
+      color: var(--muted-text);
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
+      white-space: nowrap;
+      background: transparent;
+      border-radius: 0;
+      min-height: 0;
+    }
+    .ws-tab-btn:hover { color: var(--ink); background: rgba(99,102,241,0.06); }
+    .ws-tab-btn.active {
+      color: var(--brand);
+      border-bottom-color: var(--brand);
+      background: transparent;
+    }
+    .ws-tab-btn .tab-icon { opacity: 0.7; }
+    .ws-tab-btn.active .tab-icon { opacity: 1; }
+
+    /* ── Analytical sub-tab (bottom section) ── */
+    .ana-tab-btn {
+      padding: 6px 14px;
+      font-size: 11.5px; font-weight: 600;
+      border-radius: 10px;
+      color: var(--muted-text);
+      background: transparent;
+      transition: color 0.15s, background 0.15s;
+      white-space: nowrap;
+      min-height: 0;
+    }
+    .ana-tab-btn:hover { background: rgba(99,102,241,0.08); color: var(--ink); }
+    .ana-tab-btn.active { background: var(--ink); color: #fff; }
+    html.dark .ana-tab-btn.active { background: #818cf8; color: #0f172a; }
+
+    /* ── Dark-mode input / select overrides ── */
+    html.dark input, html.dark select {
+      background: var(--surface-1) !important;
+      color: var(--ink) !important;
+      border-color: var(--line-strong) !important;
+    }
+    html.dark input::placeholder { color: var(--muted-text); }
+    html.dark input:focus, html.dark select:focus {
+      background: var(--surface) !important;
+      border-color: var(--brand) !important;
+    }
+
+    /* Theme toggle button */
+    #themeToggle {
+      display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #e2e8f0;
+      cursor: pointer;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    #themeToggle:hover { background: rgba(255,255,255,0.15); }
+
+    /* Smooth panel transitions */
+    .tab-panel { animation: fadeIn 0.18s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    /* ── Consistent section spacing ── */
+    .card-section + .card-section { margin-top: 1.25rem; }
+
+    /* ── Mode selector: active button should fill its cell height exactly ── */
+    #modeBtnBFS, #modeBtnDFS, #modeBtnPATH {
+      min-height: 0;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased selection:bg-indigo-100 selection:text-indigo-900 dark:selection:bg-indigo-900 dark:selection:text-indigo-100">
+
+  <!-- Skip link -->
+  <a href="#workspace" class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-3 focus:left-3 focus:px-3 focus:py-2 focus:rounded-lg focus:bg-white focus:text-indigo-700 focus:text-xs focus:font-bold">
+    Skip to workspace
+  </a>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       HEADER
+  ═══════════════════════════════════════════════════════════ -->
+  <header class="app-header text-white border-b border-slate-800 sticky top-0 z-30 shadow-lg">
+    <div class="max-w-[1640px] mx-auto px-4 py-3 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+      <!-- Title -->
+      <div class="flex items-start sm:items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center shadow-lg shrink-0 mt-0.5 sm:mt-0">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/>
+            <circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/>
+            <path d="M8.5 6h7M6 8.5v7M18 8.5v7M8.5 18h7M8 8l8 8"/>
+          </svg>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">Social Network Analysis Using Graph Theory</h1>
+            <span class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/20 text-cyan-300 border border-cyan-400/30">G = (V, E)</span>
+            <span id="rendererStatusBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">Cytoscape.js Ready</span>
+          </div>
+          <p class="text-[11px] text-slate-300 mt-0.5">Interactive Graph Builder · BFS/DFS Traversal · Shortest Path · Centrality Analysis</p>
+        </div>
+      </div>
+
+      <!-- Controls row -->
+      <div class="flex flex-wrap items-center gap-2" aria-label="Graph file and preset controls">
+        <!-- Primary actions -->
+        <div class="flex items-center gap-2">
+          <button onclick="resetDefaultGraph()" class="h-8 px-3 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white shadow-sm transition-colors">Reset Default</button>
+          <button onclick="loadDisconnectedSample()" class="h-8 px-3 text-xs font-medium rounded-lg bg-slate-700 hover:bg-slate-600 active:bg-slate-800 text-slate-200 border border-slate-600 transition-colors">Disconnected Test</button>
+        </div>
+        <!-- Divider -->
+        <span class="hidden sm:block w-px h-5 bg-white/20 self-center"></span>
+        <!-- Storage actions -->
+        <div class="flex items-center gap-1.5">
+          <button onclick="saveToLocalStorage()" class="h-8 px-3 text-xs font-medium rounded-lg bg-slate-700 hover:bg-slate-600 active:bg-slate-800 text-emerald-300 border border-slate-600 transition-colors">Save</button>
+          <button onclick="loadFromLocalStorage()" class="h-8 px-3 text-xs font-medium rounded-lg bg-slate-700 hover:bg-slate-600 active:bg-slate-800 text-cyan-300 border border-slate-600 transition-colors">Load</button>
+          <button onclick="exportJSON()" class="h-8 px-3 text-xs font-medium rounded-lg bg-slate-700 hover:bg-slate-600 active:bg-slate-800 text-slate-200 border border-slate-600 transition-colors">Export</button>
+          <label class="h-8 px-3 flex items-center text-xs font-medium rounded-lg bg-slate-700 hover:bg-slate-600 active:bg-slate-800 text-slate-200 border border-slate-600 transition-colors cursor-pointer">
+            Import<input type="file" id="importFileInput" accept=".json" class="hidden" onchange="importJSON(event)" />
+          </label>
+        </div>
+        <!-- Divider -->
+        <span class="hidden sm:block w-px h-5 bg-white/20 self-center"></span>
+        <!-- Theme toggle -->
+        <button id="themeToggle" onclick="toggleTheme()" title="Toggle dark / light mode" aria-label="Toggle dark mode">
+          <svg id="iconSun" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+          <svg id="iconMoon" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Toast -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       LIVE METRICS BAR
+  ═══════════════════════════════════════════════════════════ -->
+  <section class="bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-700 shadow-sm" aria-label="Live graph metrics">
+    <div class="max-w-[1640px] mx-auto px-4 py-2.5 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+      <div class="metric-card bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2">
+        <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Order |V|</div>
+        <div id="statOrder" class="text-lg font-extrabold font-mono text-slate-900 dark:text-slate-100">8</div>
+      </div>
+      <div class="metric-card bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2">
+        <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Size |E|</div>
+        <div id="statSize" class="text-lg font-extrabold font-mono text-indigo-600 dark:text-indigo-400">10</div>
+      </div>
+      <div class="metric-card bg-emerald-50/70 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 rounded-xl px-3 py-2">
+        <div class="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Handshaking Σdeg(v)</div>
+        <div id="statHandshake" class="text-lg font-extrabold font-mono text-emerald-700 dark:text-emerald-400">20 = 2|E|</div>
+      </div>
+      <div class="metric-card bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2">
+        <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Avg Degree d̄</div>
+        <div id="statAvgDeg" class="text-lg font-extrabold font-mono text-slate-900 dark:text-slate-100">2.50</div>
+      </div>
+      <div class="metric-card bg-indigo-50/70 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 rounded-xl px-3 py-2">
+        <div class="text-[11px] font-semibold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">Density D</div>
+        <div id="statDensity" class="text-lg font-extrabold font-mono text-indigo-700 dark:text-indigo-400">35.71%</div>
+      </div>
+      <div class="metric-card bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2">
+        <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Components</div>
+        <div id="statComponents" class="text-lg font-extrabold font-mono text-slate-900 dark:text-slate-100">1</div>
+      </div>
+      <div class="metric-card bg-amber-50/70 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl px-3 py-2 col-span-2 sm:col-span-1">
+        <div class="text-[11px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Diameter diam(G)</div>
+        <div id="statDiameter" class="text-lg font-extrabold font-mono text-amber-700 dark:text-amber-400">4</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       WORKSPACE TAB BAR
+  ═══════════════════════════════════════════════════════════ -->
+  <div class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-[73px] z-20 shadow-sm" role="tablist" aria-label="Workspace sections">
+    <div class="max-w-[1640px] mx-auto px-4 flex items-center gap-0 overflow-x-auto">
+      <!-- Tab: Graph -->
+      <button id="wsTabBtnGraph" role="tab" aria-selected="true" aria-controls="wsTabGraph"
+        onclick="switchWorkspaceTab('graph')"
+        class="ws-tab-btn active">
+        <svg class="tab-icon w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>
+          <path d="M8 6h8M6 8v8M18 8v8M8 18h8"/>
+        </svg>
+        Graph &amp; Traversal
+      </button>
+      <!-- Tab: Analysis -->
+      <button id="wsTabBtnAnalysis" role="tab" aria-selected="false" aria-controls="wsTabAnalysis"
+        onclick="switchWorkspaceTab('analysis')"
+        class="ws-tab-btn">
+        <svg class="tab-icon w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z"/>
+        </svg>
+        Analysis
+      </button>
+      <!-- Tab: Builder -->
+      <button id="wsTabBtnBuilder" role="tab" aria-selected="false" aria-controls="wsTabBuilder"
+        onclick="switchWorkspaceTab('builder')"
+        class="ws-tab-btn">
+        <svg class="tab-icon w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+        Builder &amp; Inspector
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       WORKSPACE PANELS
+  ═══════════════════════════════════════════════════════════ -->
+  <main id="workspace" class="flex-1 max-w-[1640px] w-full mx-auto px-4 py-6">
+
+    <!-- ─────────────────────────────────────────────────────────
+         TAB 1: GRAPH & TRAVERSAL
+    ───────────────────────────────────────────────────────── -->
+    <div id="wsTabGraph" role="tabpanel" class="tab-panel flex flex-col gap-5">
+
+      <!-- Graph Canvas + Algorithm Engine (side by side) -->
+      <div class="grid grid-cols-1 2xl:grid-cols-12 gap-5">
+
+        <!-- Cytoscape Canvas -->
+        <div class="surface-card 2xl:col-span-7 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex flex-col shadow-sm">
+          <div class="flex items-start justify-between gap-3 px-1 pb-3">
+            <div>
+              <div class="section-kicker">Network canvas</div>
+              <h2 class="text-base font-bold text-slate-900 dark:text-slate-100">Interactive Graph Map</h2>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Drag vertices, choose a layout, or click a node to inspect it.</p>
+            </div>
+            <span class="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Live model
+            </span>
+          </div>
+
+          <!-- Layout & Zoom Toolbar -->
+          <div class="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b border-slate-100 dark:border-slate-700">
+            <div class="flex items-center gap-2">
+              <label for="layoutSelect" class="text-xs font-semibold text-slate-600 dark:text-slate-300 shrink-0">Layout:</label>
+              <select id="layoutSelect" onchange="applyCytoscapeLayout(this.value)"
+                class="h-8 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-indigo-500">
+                <option value="preset">Preset (Report Topology)</option>
+                <option value="breadthfirst">Breadthfirst (Level Tree)</option>
+                <option value="circle">Circle</option>
+                <option value="grid">Grid</option>
+                <option value="cose">CoSE (Force-Directed)</option>
+              </select>
+            </div>
+            <!-- Zoom controls — icon buttons with uniform 32 px height -->
+            <div class="flex items-center gap-1">
+              <button onclick="zoomCy(1.2)" title="Zoom In"  class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-mono font-bold text-sm border border-slate-200 dark:border-slate-600 transition-colors">+</button>
+              <button onclick="zoomCy(0.8)" title="Zoom Out" class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-mono font-bold text-sm border border-slate-200 dark:border-slate-600 transition-colors">−</button>
+              <button onclick="fitCy()"        title="Fit"      class="h-8 px-3 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-slate-600 transition-colors">Fit</button>
+              <button onclick="resetDefaultGraph()" title="Reset graph" class="h-8 px-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 hover:bg-indigo-100 dark:hover:bg-indigo-800/50 text-indigo-700 dark:text-indigo-300 text-xs font-semibold border border-indigo-200 dark:border-indigo-700 transition-colors">Reset</button>
+            </div>
+          </div>
+
+          <!-- Legend -->
+          <div class="flex flex-wrap items-center gap-3 mb-2 px-1 text-[11px] font-medium">
+            <span class="flex items-center gap-1.5 text-slate-700 dark:text-slate-300"><span class="w-3 h-3 rounded-full bg-slate-800 dark:bg-slate-500 border-2 border-slate-400"></span>Unvisited</span>
+            <span class="flex items-center gap-1.5 text-amber-700 dark:text-amber-400"><span class="w-3 h-3 rounded-full bg-amber-500"></span>Active</span>
+            <span class="flex items-center gap-1.5 text-cyan-700 dark:text-cyan-400"><span class="w-3 h-3 rounded-full bg-cyan-500"></span>Queued</span>
+            <span class="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400"><span class="w-3 h-3 rounded-full bg-emerald-600"></span>Visited / Path</span>
+          </div>
+
+          <!-- Canvas -->
+          <div id="cyWrapper" class="relative w-full h-[380px] sm:h-[420px] rounded-xl border border-slate-200 dark:border-slate-700 graph-grid-bg overflow-hidden">
+            <div id="cy" class="w-full h-full"></div>
+            <svg id="fallbackSvg" class="hidden w-full h-full"></svg>
+          </div>
+
+          <!-- Shortest Path Bar -->
+          <div class="mt-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-3">
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="text-xs font-bold text-slate-800 dark:text-slate-200 shrink-0">Shortest path:</span>
+              <div class="flex items-center gap-2">
+                <select id="pathStartSelect" class="h-8 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2 text-xs text-slate-900 dark:text-slate-200 font-mono font-semibold focus:outline-none"></select>
+                <span class="text-slate-400 dark:text-slate-500 text-sm font-bold">→</span>
+                <select id="pathEndSelect"   class="h-8 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2 text-xs text-slate-900 dark:text-slate-200 font-mono font-semibold focus:outline-none"></select>
+                <button onclick="activateShortestPathMode()" class="h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition-colors whitespace-nowrap">Reconstruct Path</button>
+              </div>
+              <div id="shortestPathResult" class="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 px-2.5 py-1.5 rounded-lg">
+                d(A, H) = 4 · A → B → E → G → H
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Algorithm Execution Engine -->
+        <div class="surface-card 2xl:col-span-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex flex-col gap-4 shadow-sm">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 class="text-sm font-bold text-slate-900 dark:text-slate-100">Algorithm Execution Engine</h2>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Custom Explicit FIFO Queue / LIFO Stack Trace</p>
+            </div>
+            <span class="text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">O(|V| + |E|)</span>
+          </div>
+
+          <!-- Mode Selector -->
+          <div class="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-slate-700 p-1 rounded-xl border border-slate-200 dark:border-slate-600">
+            <button id="modeBtnBFS"  onclick="selectMode('BFS')"  class="rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-sm transition-colors">BFS (FIFO Queue)</button>
+            <button id="modeBtnDFS"  onclick="selectMode('DFS')"  class="rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">DFS (LIFO Stack)</button>
+            <button id="modeBtnPATH" onclick="selectMode('PATH')" class="rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">Shortest Path</button>
+          </div>
+
+          <!-- Source / Target & Playback -->
+          <div class="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-3 flex flex-col gap-3">
+            <!-- Source / Target row -->
+            <div class="flex flex-wrap items-center gap-3">
+              <div class="flex items-center gap-1.5">
+                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300 shrink-0">Source:</label>
+                <select id="algoSourceSelect" onchange="onSourceTargetChange()" class="h-8 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2 text-xs text-slate-900 dark:text-slate-200 font-mono font-bold focus:outline-none"></select>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <label id="algoTargetLabel" class="text-xs font-semibold text-slate-600 dark:text-slate-300 shrink-0">Target:</label>
+                <select id="algoTargetSelect" onchange="onSourceTargetChange()" class="h-8 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2 text-xs text-slate-900 dark:text-slate-200 font-mono font-bold focus:outline-none"></select>
+              </div>
+            </div>
+            <!-- Playback row — all buttons share h-8 -->
+            <div class="flex items-center gap-1.5">
+              <button onclick="prepareTraversal()" title="Reset traversal" class="h-8 px-3 rounded-lg bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 transition-colors">Reset</button>
+              <button onclick="stepBackward()"    title="Previous step"  class="h-8 px-3 rounded-lg bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-xs font-mono font-bold text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 transition-colors">◀ Prev</button>
+              <button id="playPauseBtn" onclick="togglePlay()"           class="h-8 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-xs text-white font-semibold shadow-sm transition-colors">▶ Play</button>
+              <button onclick="stepForward()"     title="Next step"      class="h-8 px-3 rounded-lg bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-xs font-mono font-bold text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 transition-colors">Next ▶</button>
+              <button onclick="runAllSteps()"     title="Jump to end"    class="h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-xs text-white font-semibold transition-colors">Run All</button>
+            </div>
+          </div>
+
+          <!-- Step Description -->
+          <div class="bg-indigo-50/70 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 rounded-xl p-3">
+            <div class="flex items-center justify-between text-[11px] font-mono font-bold text-indigo-800 dark:text-indigo-300 mb-1">
+              <span id="stepCounterLabel">Step 0 / 8 (BFS)</span>
+              <span id="activeVertexBadge" class="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">Current: —</span>
+            </div>
+            <p id="stepDescription" class="text-xs text-slate-800 dark:text-slate-200 leading-relaxed">Initialized BFS at source vertex A (dist[A] = 0, parent[A] = NIL). Enqueued A into FIFO Queue.</p>
+          </div>
+
+          <!-- Queue/Stack & Visited -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div class="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-2.5">
+              <div id="dsTitle" class="text-[11px] font-bold text-cyan-800 dark:text-cyan-400 uppercase tracking-wider mb-1">FIFO Queue (Front → Rear)</div>
+              <div id="dsContent" class="font-mono text-xs text-slate-900 dark:text-slate-200 min-h-[24px] flex flex-wrap gap-1 items-center"></div>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-2.5">
+              <div class="text-[11px] font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider mb-1">Visited Set / Order</div>
+              <div id="visitedContent" class="font-mono text-xs font-semibold text-emerald-800 dark:text-emerald-400 min-h-[24px] flex flex-wrap gap-1 items-center">{ A }</div>
+            </div>
+          </div>
+
+          <!-- Distance Array Table -->
+          <div class="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl overflow-hidden flex-1 max-h-[220px] overflow-y-auto">
+            <div class="px-3 pt-3 pb-1 text-[10.5px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Distance Array dist[v] &amp; Predecessor parent[v]</div>
+            <table class="md-table md-compact" style="table-layout:fixed;width:100%">
+              <colgroup>
+                <col style="width:20%">
+                <col style="width:36%">
+                <col style="width:22%">
+                <col style="width:22%">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Vertex</th>
+                  <th>State</th>
+                  <th class="col-num">dist[v]</th>
+                  <th class="col-num">parent[v]</th>
+                </tr>
+              </thead>
+              <tbody id="stateTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Traversal Trace (full table, inline in Graph tab) -->
+      <div class="surface-card bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100" id="traceTableHeading">Complete BFS Step-by-Step Execution Trace (Source: A)</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Click any row to jump to that step on the canvas.</p>
+          </div>
+          <span id="traceSummaryBadge" class="text-xs font-mono font-semibold text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700 px-3 py-1 rounded-full">
+            Levels: L0={A}, L1={B,C}, L2={D,E,F}, L3={G}, L4={H}
+          </span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="md-table">
+            <colgroup>
+              <col style="width:60px">
+              <col style="width:120px">
+              <col style="width:160px">
+              <col>
+              <col style="width:170px">
+              <col style="width:170px">
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="col-center">Step</th>
+                <th class="col-nowrap">Dequeued / Popped</th>
+                <th class="col-nowrap">Neighbors Scanned</th>
+                <th>Newly Discovered</th>
+                <th>Queue / Stack After</th>
+                <th>Visited Vertices</th>
+              </tr>
+            </thead>
+            <tbody id="fullTraceTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────
+         TAB 2: ANALYSIS (Matrix + Centrality, sub-tabbed)
+    ───────────────────────────────────────────────────────── -->
+    <div id="wsTabAnalysis" role="tabpanel" class="tab-panel hidden flex flex-col gap-5">
+
+      <!-- Sub-tab bar -->
+      <div class="surface-card bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700" role="tablist" aria-label="Analytical views">
+          <div class="flex flex-wrap gap-1.5">
+            <button id="tabBtnMatrix" role="tab" aria-selected="true" aria-controls="panelMatrix"
+              onclick="switchAnalyticalTab('matrix')"
+              class="ana-tab-btn active">
+              Adjacency Matrix &amp; List
+            </button>
+            <button id="tabBtnCentrality" role="tab" aria-selected="false" aria-controls="panelCentrality"
+              onclick="switchAnalyticalTab('centrality')"
+              class="ana-tab-btn">
+              Centrality &amp; Clustering
+            </button>
+          </div>
+          <span class="text-[11px] font-mono text-slate-500 dark:text-slate-400">Deterministic Alphabetical Tie-Breaking</span>
+        </div>
+
+        <!-- Matrix Panel -->
+        <div id="panelMatrix" role="tabpanel" class="p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <div class="lg:col-span-7 overflow-x-auto">
+            <div class="mb-3">
+              <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100">Symmetric Adjacency Matrix A (|V| × |V|)</h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">A<sub>ij</sub> = 1 if {v<sub>i</sub>, v<sub>j</sub>} ∈ E else 0 · Zero main diagonal · Sum = <span id="matrixTotalSum" class="font-mono font-bold text-emerald-700 dark:text-emerald-400">20 = 2|E|</span></p>
+            </div>
+            <div id="adjMatrixContainer" class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden"></div>
+          </div>
+          <div class="lg:col-span-5">
+            <div class="mb-3">
+              <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100">Sorted Adjacency List Adj[v]</h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Sparse representation — Θ(|V| + |E|) space, O(|V| + |E|) traversal.</p>
+            </div>
+            <div id="adjListContainer" class="space-y-1.5 max-h-[400px] overflow-y-auto pr-1"></div>
+          </div>
+        </div>
+
+        <!-- Centrality Panel -->
+        <div id="panelCentrality" role="tabpanel" class="hidden overflow-x-auto">
+          <div class="flex flex-wrap items-center justify-between gap-2 px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100">Structural Centrality &amp; Local Clustering Coefficient</h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">C<sub>D</sub>, Normalized Degree, Σd(v,u), Closeness C<sub>C</sub>, Betweenness C<sub>B</sub>, Clustering C<sub>i</sub> = 2e<sub>i</sub>/[k<sub>i</sub>(k<sub>i</sub>−1)]</p>
+            </div>
+          </div>
+          <table class="md-table">
+            <colgroup>
+              <col style="width:70px">
+              <col style="width:140px">
+              <col style="width:80px">
+              <col style="width:90px">
+              <col style="width:90px">
+              <col style="width:100px">
+              <col style="width:110px">
+              <col style="width:100px">
+              <col>
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Vertex</th>
+                <th>Neighbors N(v)</th>
+                <th class="col-num">Degree C<sub>D</sub></th>
+                <th class="col-num">Norm. C<sub>D</sub></th>
+                <th class="col-num">Dist Sum Σd</th>
+                <th class="col-num">Closeness C<sub>C</sub></th>
+                <th class="col-num">Betweenness C<sub>B</sub></th>
+                <th class="col-num">Clustering C<sub>i</sub></th>
+                <th>Structural Role</th>
+              </tr>
+            </thead>
+            <tbody id="centralityTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────
+         TAB 3: BUILDER & INSPECTOR
+    ───────────────────────────────────────────────────────── -->
+    <div id="wsTabBuilder" role="tabpanel" class="tab-panel hidden grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+      <!-- Graph Builder & Validation -->
+      <div class="surface-card bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
+        <h2 class="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 mb-4">
+          <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+          Graph Builder &amp; Validation
+        </h2>
+
+        <div id="validationFeedback" class="hidden mb-3 px-3 py-2 rounded-xl text-xs font-medium border"></div>
+
+        <!-- Add Vertex -->
+        <div class="mb-5">
+          <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2">Add Individual (Vertex v ∈ V)</label>
+          <div class="flex gap-2">
+            <input id="newVertexInput" type="text" maxlength="10" placeholder="e.g., I or ISHA"
+              class="flex-1 h-9 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-500 font-mono uppercase"
+              onkeydown="if(event.key==='Enter') handleAddVertex()" />
+            <button onclick="handleAddVertex()" class="h-9 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition-colors whitespace-nowrap">+ Add</button>
+          </div>
+        </div>
+
+        <!-- Add / Remove Edge -->
+        <div class="mb-5 pt-4 border-t border-slate-100 dark:border-slate-700">
+          <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">Manage Friendship Edge {u, v} ∈ E</label>
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <span class="block text-[11px] font-medium text-slate-400 dark:text-slate-500 mb-1.5">Source (u)</span>
+              <select id="edgeUSelect" class="w-full h-9 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-200 font-mono focus:outline-none focus:border-indigo-500"></select>
+            </div>
+            <div>
+              <span class="block text-[11px] font-medium text-slate-400 dark:text-slate-500 mb-1.5">Target (v)</span>
+              <select id="edgeVSelect" class="w-full h-9 bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl px-3 text-xs text-slate-900 dark:text-slate-200 font-mono focus:outline-none focus:border-indigo-500"></select>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="handleAddEdge()"    class="h-9 rounded-xl bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white text-xs font-semibold shadow-sm transition-colors">+ Add Edge</button>
+            <button onclick="handleRemoveEdge()" class="h-9 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-rose-50 dark:hover:bg-rose-900/30 text-rose-700 dark:text-rose-400 border border-slate-300 dark:border-slate-600 hover:border-rose-300 dark:hover:border-rose-700 text-xs font-semibold transition-colors">− Remove Edge</button>
+          </div>
+        </div>
+
+        <!-- Delete Vertex -->
+        <div class="pt-4 border-t border-slate-100 dark:border-slate-700">
+          <button onclick="handleDeleteSelectedVertex()" class="w-full h-9 rounded-xl bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 text-xs font-semibold transition-colors">
+            Delete Selected Vertex (<span id="btnSelectedLabel" class="font-mono font-bold">A</span>)
+          </button>
+        </div>
+      </div>
+
+      <!-- Vertex Inspector -->
+      <div class="surface-card bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-600"></span>
+            Vertex Inspector
+          </h2>
+          <span id="inspectedBadge" class="px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-mono text-xs font-bold">Node A</span>
+        </div>
+        <p class="text-[11px] text-slate-500 dark:text-slate-400 mb-4">Switch to the Graph tab and click any node to inspect its metrics here.</p>
+
+        <div class="space-y-2 text-xs">
+          <div class="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-2.5 flex justify-between items-center">
+            <span class="text-slate-600 dark:text-slate-300 font-medium">Degree deg(v)</span>
+            <span id="inspDeg" class="font-mono font-bold text-slate-900 dark:text-slate-100">2</span>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-2.5">
+            <div class="text-slate-600 dark:text-slate-300 font-medium mb-1">Open Neighborhood N(v)</div>
+            <div id="inspNeighbors" class="font-mono font-bold text-indigo-700 dark:text-indigo-400">{ B, C }</div>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-2.5 flex justify-between items-center">
+            <span class="text-slate-600 dark:text-slate-300 font-medium">Normalized Degree C<sub>D</sub></span>
+            <span id="inspNormDeg" class="font-mono font-semibold text-slate-800 dark:text-slate-200">0.286</span>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-2.5 flex justify-between items-center">
+            <span class="text-slate-600 dark:text-slate-300 font-medium">Closeness C<sub>C</sub></span>
+            <span id="inspCloseness" class="font-mono font-bold text-emerald-700 dark:text-emerald-400">0.467</span>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-2.5 flex justify-between items-center">
+            <span class="text-slate-600 dark:text-slate-300 font-medium">Betweenness C<sub>B</sub></span>
+            <span id="inspBetweenness" class="font-mono font-bold text-amber-700 dark:text-amber-400">0.50</span>
+          </div>
+          <div class="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl p-2.5 flex justify-between items-center">
+            <span class="text-slate-600 dark:text-slate-300 font-medium">Clustering C<sub>i</sub></span>
+            <span id="inspClustering" class="font-mono font-semibold text-indigo-700 dark:text-indigo-400">0.000</span>
+          </div>
+          <div class="bg-indigo-50/70 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 rounded-xl p-2.5 flex justify-between items-center">
+            <span class="text-indigo-900 dark:text-indigo-300 font-medium">Topological Role</span>
+            <span id="inspRole" class="font-bold text-indigo-700 dark:text-indigo-400 text-right">Core Member</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // =========================================================================
+    // THEME TOGGLE
+    // =========================================================================
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.classList.contains('dark');
+      html.classList.toggle('dark', !isDark);
+      html.classList.toggle('light', isDark);
+      document.getElementById('iconSun').classList.toggle('hidden', !isDark);
+      document.getElementById('iconMoon').classList.toggle('hidden', isDark);
+      // Update Cytoscape node/edge colours to match theme
+      updateCytoscapeTheme();
+      try { localStorage.setItem('mru_sna_theme', isDark ? 'light' : 'dark'); } catch(e){}
+    }
+
+    function applyStoredTheme() {
+      try {
+        const t = localStorage.getItem('mru_sna_theme') || 'light';
+        document.documentElement.classList.toggle('dark', t === 'dark');
+        document.documentElement.classList.toggle('light', t !== 'dark');
+        document.getElementById('iconSun').classList.toggle('hidden', t === 'dark');
+        document.getElementById('iconMoon').classList.toggle('hidden', t !== 'dark');
+      } catch(e){}
+    }
+
+    function updateCytoscapeTheme() {
+      if (!cy) return;
+      const dark = document.documentElement.classList.contains('dark');
+      cy.style()
+        .selector('node')
+        .style({
+          'background-color': dark ? '#334155' : '#1e293b',
+          'border-color':     dark ? '#94a3b8' : '#64748b',
+          'color':            '#ffffff'
+        })
+        .update();
+    }
+
+    // =========================================================================
+    // WORKSPACE TABS
+    // =========================================================================
+    function switchWorkspaceTab(tabName) {
+      const tabs = { graph: 'wsTabGraph', analysis: 'wsTabAnalysis', builder: 'wsTabBuilder' };
+      const btns = { graph: 'wsTabBtnGraph', analysis: 'wsTabBtnAnalysis', builder: 'wsTabBtnBuilder' };
+      Object.entries(tabs).forEach(([key, panelId]) => {
+        const panel = document.getElementById(panelId);
+        const btn   = document.getElementById(btns[key]);
+        const active = key === tabName;
+        panel.classList.toggle('hidden', !active);
+        btn.setAttribute('aria-selected', active);
+        btn.classList.toggle('active', active);
+      });
+      // Resize Cytoscape when the graph tab becomes visible
+      if (tabName === 'graph' && cy) { setTimeout(() => cy.fit(undefined, 45), 50); }
+    }
+
+    // =========================================================================
+    // 1. GRAPH DATA MODEL & DEFAULT REFERENCE NETWORK
+    // =========================================================================
+    let vertices = [];
+    let edges    = [];
+    let selectedVertex = 'A';
+    let cy = null;
+    let useSvgFallback = false;
+    let currentMode = 'BFS';
+    let traceSteps = [];
+    let currentStepIndex = 0;
+    let playInterval = null;
+    let highlightedPathEdges = new Set();
+    let highlightedPathNodes = new Set();
+
+    function getDefaultGraphData() {
+      return {
+        vertices: [
+          { id:'A', x:130, y:95  }, { id:'B', x:310, y:95  },
+          { id:'C', x:130, y:225 }, { id:'D', x:310, y:225 },
+          { id:'E', x:460, y:160 }, { id:'F', x:130, y:345 },
+          { id:'G', x:460, y:315 }, { id:'H', x:620, y:315 }
+        ],
+        edges: [
+          {u:'A',v:'B'},{u:'A',v:'C'},{u:'B',v:'D'},{u:'B',v:'E'},
+          {u:'C',v:'D'},{u:'C',v:'F'},{u:'D',v:'E'},{u:'E',v:'G'},
+          {u:'F',v:'G'},{u:'G',v:'H'}
+        ]
+      };
+    }
+
+    function getDisconnectedSampleData() {
+      return {
+        vertices: [
+          {id:'A',x:120,y:110},{id:'B',x:260,y:110},{id:'C',x:120,y:270},
+          {id:'D',x:260,y:270},{id:'E',x:450,y:130},{id:'F',x:590,y:200},{id:'G',x:450,y:290}
+        ],
+        edges: [
+          {u:'A',v:'B'},{u:'B',v:'D'},{u:'C',v:'D'},{u:'A',v:'C'},
+          {u:'E',v:'F'},{u:'F',v:'G'}
+        ]
+      };
+    }
+
+    function edgeKey(u,v) { return [u,v].sort().join('::'); }
+    function edgeExists(u,v) { const k=edgeKey(u,v); return edges.some(e=>edgeKey(e.u,e.v)===k); }
+
+    function buildAdjacencyList() {
+      const adj={};
+      vertices.map(v=>v.id).sort((a,b)=>a.localeCompare(b)).forEach(id=>{adj[id]=[];});
+      edges.forEach(({u,v})=>{
+        if(adj[u]&&adj[v]){ adj[u].push(v); adj[v].push(u); }
+      });
+      Object.keys(adj).forEach(k=>adj[k].sort((a,b)=>a.localeCompare(b)));
+      return adj;
+    }
+
+    // =========================================================================
+    // 2. TOAST & VALIDATION
+    // =========================================================================
+    function showValidationMessage(msg, type='error') {
+      const box = document.getElementById('validationFeedback');
+      box.textContent = msg;
+      box.classList.remove('hidden','bg-rose-50','border-rose-200','text-rose-700','bg-emerald-50','border-emerald-200','text-emerald-700',
+        'dark:bg-rose-900/20','dark:border-rose-800','dark:text-rose-400','dark:bg-emerald-900/20','dark:border-emerald-800','dark:text-emerald-400');
+      if(type==='error'){
+        box.classList.add('bg-rose-50','border-rose-200','text-rose-700');
+      } else {
+        box.classList.add('bg-emerald-50','border-emerald-200','text-emerald-700');
+      }
+      showToast(msg, type);
+    }
+    function clearValidationMessage() {
+      const box = document.getElementById('validationFeedback');
+      if(box) box.classList.add('hidden');
+    }
+    function showToast(message, type='info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      const styles = {
+        success: 'bg-emerald-900 border-emerald-500 text-emerald-100',
+        error:   'bg-rose-900 border-rose-500 text-rose-100',
+        info:    'bg-slate-900 border-indigo-400 text-slate-100'
+      };
+      toast.className=`pointer-events-auto px-4 py-2.5 rounded-xl border text-xs font-medium shadow-xl transition-all duration-300 ${styles[type]||styles.info}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(()=>{
+        toast.style.opacity='0'; toast.style.transform='translateY(6px)';
+        setTimeout(()=>toast.remove(), 280);
+      }, 3000);
+    }
+
+    // =========================================================================
+    // 3. CYTOSCAPE INIT
+    // =========================================================================
+    function initCytoscape() {
+      const badge = document.getElementById('rendererStatusBadge');
+      if(typeof window.cytoscape==='undefined'){
+        useSvgFallback=true;
+        badge.textContent='Offline SVG Renderer';
+        badge.className='text-[11px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/30';
+        document.getElementById('cy').classList.add('hidden');
+        document.getElementById('fallbackSvg').classList.remove('hidden');
+        renderFallbackSvg(); return;
+      }
+      useSvgFallback=false;
+      badge.textContent='Cytoscape.js v3.28 Active';
+      const dark = document.documentElement.classList.contains('dark');
+      cy = cytoscape({
+        container: document.getElementById('cy'),
+        elements: buildCytoscapeElements(),
+        style: [
+          { selector:'node', style:{
+            'background-color': dark?'#334155':'#1e293b',
+            'border-width':3,'border-color': dark?'#94a3b8':'#64748b',
+            'label':'data(id)','color':'#ffffff',
+            'font-family':'JetBrains Mono, monospace','font-size':'14px','font-weight':'bold',
+            'text-valign':'center','text-halign':'center','width':44,'height':44,
+            'transition-property':'background-color,border-color,width,height','transition-duration':'200ms'
+          }},
+          { selector:'node.selected-node', style:{'border-width':4,'border-color':'#4f46e5','width':48,'height':48}},
+          { selector:'node.queued',  style:{'background-color':'#0891b2','border-color':'#67e8f9','border-width':4}},
+          { selector:'node.visited', style:{'background-color':'#059669','border-color':'#6ee7b7','border-width':3.5}},
+          { selector:'node.active',  style:{'background-color':'#d97706','border-color':'#fde68a','border-width':5,'width':52,'height':52}},
+          { selector:'node.path-node',style:{'background-color':'#0284c7','border-color':'#38bdf8','border-width':5,'width':50,'height':50}},
+          { selector:'edge', style:{'width':3,'line-color':'#94a3b8','curve-style':'bezier','transition-property':'line-color,width','transition-duration':'200ms'}},
+          { selector:'edge.path-edge',style:{'width':6,'line-color':'#06b6d4'}}
+        ],
+        layout:{ name:'preset', fit:true, padding:45 },
+        wheelSensitivity:0.25
+      });
+      cy.on('tap','node',function(evt){
+        selectedVertex=evt.target.id();
+        updateInspector(computeGraphAnalytics());
+        syncCytoscapeStyles();
+      });
+      cy.on('dragfree','node',function(evt){
+        const node=evt.target; const pos=node.position();
+        const vObj=vertices.find(v=>v.id===node.id());
+        if(vObj){ vObj.x=pos.x; vObj.y=pos.y; }
+      });
+    }
+
+    function buildCytoscapeElements() {
+      return [
+        ...vertices.map(v=>({group:'nodes',data:{id:v.id},position:{x:v.x,y:v.y}})),
+        ...edges.map(e=>({group:'edges',data:{id:edgeKey(e.u,e.v),source:e.u,target:e.v}}))
+      ];
+    }
+
+    function rebuildCytoscapeGraph(runLayout=false) {
+      if(useSvgFallback){ renderFallbackSvg(); return; }
+      if(!cy) return;
+      cy.elements().remove();
+      cy.add(buildCytoscapeElements());
+      if(runLayout){
+        applyCytoscapeLayout(document.getElementById('layoutSelect').value||'preset');
+      } else { cy.fit(undefined,45); }
+      syncCytoscapeStyles();
+    }
+
+    function applyCytoscapeLayout(layoutName) {
+      if(useSvgFallback||!cy) return;
+      const options={ name:layoutName, fit:true, padding:45, animate:true, animationDuration:350 };
+      if(layoutName==='breadthfirst'){
+        options.roots=`#${document.getElementById('algoSourceSelect').value||vertices[0]?.id}`;
+        options.directed=false; options.spacingFactor=1.25;
+      }
+      cy.layout(options).run();
+      setTimeout(()=>{
+        cy.nodes().forEach(n=>{
+          const vObj=vertices.find(v=>v.id===n.id());
+          if(vObj){ vObj.x=n.position('x'); vObj.y=n.position('y'); }
+        });
+      },380);
+    }
+
+    function zoomCy(factor) {
+      if(useSvgFallback||!cy) return;
+      cy.zoom({ level:cy.zoom()*factor, renderedPosition:{x:cy.width()/2,y:cy.height()/2} });
+    }
+    function fitCy() { if(useSvgFallback||!cy) return; cy.fit(undefined,45); }
+
+    function syncCytoscapeStyles() {
+      const step = traceSteps[currentStepIndex]||{activeNode:null,frontier:[],visited:[]};
+      if(useSvgFallback){ renderFallbackSvg(); return; }
+      if(!cy) return;
+      cy.nodes().forEach(node=>{
+        const id=node.id();
+        node.removeClass('selected-node queued visited active path-node');
+        if(id===selectedVertex) node.addClass('selected-node');
+        if(currentMode==='PATH'&&highlightedPathNodes.has(id)) node.addClass('path-node');
+        else if(id===step.activeNode) node.addClass('active');
+        else if(step.frontier.includes(id)) node.addClass('queued');
+        else if(step.visited.includes(id)) node.addClass('visited');
+      });
+      cy.edges().forEach(edge=>{
+        edge.removeClass('path-edge');
+        if(currentMode==='PATH'&&highlightedPathEdges.has(edge.id())) edge.addClass('path-edge');
+      });
+    }
+
+    function renderFallbackSvg() {
+      const svg = document.getElementById('fallbackSvg');
+      if(!svg) return;
+      const step = traceSteps[currentStepIndex]||{activeNode:null,frontier:[],visited:[]};
+      const dark = document.documentElement.classList.contains('dark');
+      let content='';
+      edges.forEach(({u,v})=>{
+        const nu=vertices.find(i=>i.id===u), nv=vertices.find(i=>i.id===v);
+        if(!nu||!nv) return;
+        const isPath=currentMode==='PATH'&&highlightedPathEdges.has(edgeKey(u,v));
+        content+=`<line x1="${nu.x}" y1="${nu.y}" x2="${nv.x}" y2="${nv.y}" stroke="${isPath?'#06b6d4':dark?'#475569':'#94a3b8'}" stroke-width="${isPath?5:2.5}"/>`;
+      });
+      vertices.forEach(node=>{
+        let fill=dark?'#334155':'#1e293b', stroke=dark?'#94a3b8':'#64748b';
+        if(currentMode==='PATH'&&highlightedPathNodes.has(node.id)){fill='#0284c7';stroke='#38bdf8';}
+        else if(node.id===step.activeNode){fill='#d97706';stroke='#fde68a';}
+        else if(step.frontier.includes(node.id)){fill='#0891b2';stroke='#67e8f9';}
+        else if(step.visited.includes(node.id)){fill='#059669';stroke='#6ee7b7';}
+        if(node.id===selectedVertex) stroke='#4f46e5';
+        content+=`<g style="cursor:pointer" onclick="selectedVertex='${node.id}';updateInspector(computeGraphAnalytics());syncCytoscapeStyles();">
+          <circle cx="${node.x}" cy="${node.y}" r="21" fill="${fill}" stroke="${stroke}" stroke-width="3.5"/>
+          <text x="${node.x}" y="${node.y}" fill="#fff" font-family="JetBrains Mono,monospace" font-weight="bold" font-size="13" text-anchor="middle" dominant-baseline="central">${node.id}</text>
+        </g>`;
+      });
+      svg.setAttribute('viewBox','0 0 740 420');
+      svg.innerHTML=content;
+    }
+
+    // =========================================================================
+    // 4. GRAPH BUILDER HANDLERS
+    // =========================================================================
+    function handleAddVertex() {
+      const input=document.getElementById('newVertexInput');
+      const raw=input.value.trim().toUpperCase().replace(/[^A-Z0-9_]/g,'');
+      if(!raw){ showValidationMessage('Invalid input: Enter a non-empty alphanumeric vertex label.','error'); return; }
+      if(vertices.some(v=>v.id===raw)){ showValidationMessage(`Duplicate vertex "${raw}" rejected.`,'error'); return; }
+      const angle=(vertices.length*1.15)%(2*Math.PI);
+      vertices.push({id:raw, x:Math.round(370+180*Math.cos(angle)), y:Math.round(210+130*Math.sin(angle))});
+      input.value=''; selectedVertex=raw;
+      clearValidationMessage(); refreshAll(true);
+      showToast(`Added vertex "${raw}" to V.`,'success');
+    }
+
+    function handleAddEdge() {
+      const u=document.getElementById('edgeUSelect').value, v=document.getElementById('edgeVSelect').value;
+      if(!u||!v) return;
+      if(u===v){ showValidationMessage(`Self-loop {${u},${v}} rejected.`,'error'); return; }
+      if(edgeExists(u,v)){ showValidationMessage(`Duplicate edge {${u},${v}} rejected.`,'error'); return; }
+      edges.push({u,v}); clearValidationMessage(); refreshAll(true);
+      showToast(`Added edge {${u},${v}}.`,'success');
+    }
+
+    function handleRemoveEdge() {
+      const u=document.getElementById('edgeUSelect').value, v=document.getElementById('edgeVSelect').value;
+      if(!edgeExists(u,v)){ showValidationMessage(`No edge between ${u} and ${v}.`,'error'); return; }
+      const k=edgeKey(u,v);
+      edges=edges.filter(e=>edgeKey(e.u,e.v)!==k);
+      clearValidationMessage(); refreshAll(true);
+      showToast(`Removed edge {${u},${v}}.`,'info');
+    }
+
+    function handleDeleteSelectedVertex() {
+      if(!selectedVertex) return;
+      if(vertices.length<=1){ showValidationMessage('Cannot delete the last vertex.','error'); return; }
+      const target=selectedVertex;
+      vertices=vertices.filter(v=>v.id!==target);
+      edges=edges.filter(e=>e.u!==target&&e.v!==target);
+      selectedVertex=vertices[0].id;
+      clearValidationMessage(); refreshAll(true);
+      showToast(`Deleted vertex "${target}" and all incident edges.`,'info');
+    }
+
+    function resetDefaultGraph() {
+      const data=getDefaultGraphData();
+      vertices=data.vertices; edges=data.edges; selectedVertex='A';
+      document.getElementById('layoutSelect').value='preset';
+      clearValidationMessage(); refreshAll(true);
+      document.getElementById('algoSourceSelect').value='A';
+      document.getElementById('algoTargetSelect').value='H';
+      document.getElementById('pathStartSelect').value='A';
+      document.getElementById('pathEndSelect').value='H';
+      selectMode('BFS'); computeShortestPath();
+      showToast('Restored default reference network (|V|=8, |E|=10).','success');
+    }
+
+    function loadDisconnectedSample() {
+      const data=getDisconnectedSampleData();
+      vertices=data.vertices; edges=data.edges; selectedVertex='A';
+      document.getElementById('layoutSelect').value='preset';
+      clearValidationMessage(); refreshAll(true);
+      document.getElementById('algoSourceSelect').value='A';
+      document.getElementById('algoTargetSelect').value='G';
+      document.getElementById('pathStartSelect').value='A';
+      document.getElementById('pathEndSelect').value='G';
+      prepareTraversal(); computeShortestPath();
+      showToast('Loaded disconnected 2-component test graph.','info');
+    }
+
+    function saveToLocalStorage() {
+      try{ localStorage.setItem('mru_sna_graph_v1',JSON.stringify({vertices,edges})); showToast('Saved to LocalStorage.','success'); }
+      catch(e){ showToast('LocalStorage unavailable.','error'); }
+    }
+
+    function loadFromLocalStorage() {
+      try{
+        const raw=localStorage.getItem('mru_sna_graph_v1');
+        if(!raw){ showToast('No saved graph found.','error'); return; }
+        const p=JSON.parse(raw);
+        if(!Array.isArray(p.vertices)||!Array.isArray(p.edges)||p.vertices.length===0) throw new Error();
+        vertices=p.vertices; edges=p.edges; selectedVertex=vertices[0].id;
+        refreshAll(true); showToast('Loaded from LocalStorage.','success');
+      }catch(e){ showToast('Failed to load from LocalStorage.','error'); }
+    }
+
+    function exportJSON() {
+      const blob=new Blob([JSON.stringify({vertices,edges},null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download='social_network_graph.json'; a.click();
+      URL.revokeObjectURL(url); showToast('Exported JSON.','success');
+    }
+
+    function importJSON(event) {
+      const file=event.target.files[0]; if(!file) return;
+      const reader=new FileReader();
+      reader.onload=(e)=>{
+        try{
+          const p=JSON.parse(e.target.result);
+          if(!Array.isArray(p.vertices)||!Array.isArray(p.edges)||p.vertices.length===0) throw new Error();
+          vertices=p.vertices; edges=p.edges; selectedVertex=vertices[0].id;
+          refreshAll(true); showToast('Imported JSON.','success');
+        }catch(err){ showToast('Invalid JSON file.','error'); }
+      };
+      reader.readAsText(file); event.target.value='';
+    }
+
+    // =========================================================================
+    // 5. GRAPH ANALYTICS
+    // =========================================================================
+    function computeGraphAnalytics() {
+      const adj=buildAdjacencyList();
+      const ids=Object.keys(adj);
+      const n=ids.length, m=edges.length;
+
+      const visitedGlobal=new Set(); let components=0;
+      ids.forEach(start=>{
+        if(!visitedGlobal.has(start)){
+          components++;
+          const q=[start]; visitedGlobal.add(start);
+          while(q.length>0){ const c=q.shift(); adj[c].forEach(x=>{ if(!visitedGlobal.has(x)){ visitedGlobal.add(x); q.push(x); } }); }
+        }
+      });
+
+      const distMatrix={}, betweenness={};
+      ids.forEach(id=>{ betweenness[id]=0; });
+      let diameter=0;
+
+      ids.forEach(s=>{
+        const S=[],P={},sigma={},d={};
+        ids.forEach(v=>{ P[v]=[]; sigma[v]=0; d[v]=-1; });
+        sigma[s]=1; d[s]=0;
+        const Q=[s];
+        while(Q.length>0){
+          const v=Q.shift(); S.push(v);
+          if(d[v]>diameter) diameter=d[v];
+          adj[v].forEach(w=>{
+            if(d[w]<0){ Q.push(w); d[w]=d[v]+1; }
+            if(d[w]===d[v]+1){ sigma[w]+=sigma[v]; P[w].push(v); }
+          });
+        }
+        distMatrix[s]=d;
+        const delta={};
+        ids.forEach(v=>{ delta[v]=0; });
+        while(S.length>0){
+          const w=S.pop();
+          P[w].forEach(v=>{ delta[v]+=(sigma[v]/sigma[w])*(1+delta[w]); });
+          if(w!==s) betweenness[w]+=delta[w];
+        }
+      });
+
+      ids.forEach(id=>{ betweenness[id]/=2; });
+
+      const nodeMetrics={};
+      ids.forEach(v=>{
+        const neighbors=adj[v], deg=neighbors.length;
+        const normDeg=n>1?deg/(n-1):0;
+        let distSum=0, reachableCount=0;
+        ids.forEach(u=>{ if(u!==v&&distMatrix[v][u]>=0){ distSum+=distMatrix[v][u]; reachableCount++; } });
+        const closeness=distSum>0?reachableCount/distSum:0;
+        let triangles=0;
+        for(let i=0;i<neighbors.length;i++)
+          for(let j=i+1;j<neighbors.length;j++)
+            if(edgeExists(neighbors[i],neighbors[j])) triangles++;
+        const clustering=deg>=2?(2*triangles)/(deg*(deg-1)):0;
+        nodeMetrics[v]={id:v,neighbors,deg,normDeg,distSum,closeness,betweenness:betweenness[v],clustering};
+      });
+
+      const sumDegrees=ids.reduce((acc,v)=>acc+nodeMetrics[v].deg,0);
+      const avgDegree=n>0?sumDegrees/n:0;
+      const density=n>1?(2*m)/(n*(n-1)):0;
+
+      return {n,m,sumDegrees,avgDegree,density,components,
+              diameter:components>1?`${diameter} (max)`:diameter,
+              adj,distMatrix,nodeMetrics};
+    }
+
+    // =========================================================================
+    // 6. BFS / DFS TRACE ENGINE
+    // =========================================================================
+    function generateBFSTrace(source) {
+      const adj=buildAdjacencyList(), ids=Object.keys(adj);
+      const visited={}, dist={}, parent={};
+      ids.forEach(id=>{ visited[id]=false; dist[id]='∞'; parent[id]='NIL'; });
+      const steps=[], queue=[], visitedOrder=[];
+      visited[source]=true; dist[source]=0; queue.push(source); visitedOrder.push(source);
+      steps.push({stepNum:0,activeNode:null,scanned:'—',discovered:`${source} (dist=0, π=NIL)`,
+        frontier:[...queue],visited:[...visitedOrder],dist:{...dist},parent:{...parent},
+        desc:`Step 0: Initialized BFS at source ${source} (dist[${source}]=0, parent[${source}]=NIL). Enqueued ${source}.`});
+      let stepNum=1;
+      while(queue.length>0){
+        const u=queue.shift(), newlyDiscovered=[];
+        adj[u].forEach(v=>{
+          if(!visited[v]){
+            visited[v]=true; dist[v]=dist[u]+1; parent[v]=u;
+            queue.push(v); visitedOrder.push(v);
+            newlyDiscovered.push(`${v} (dist=${dist[v]}, π=${u})`);
+          }
+        });
+        const discSummary=newlyDiscovered.length>0?newlyDiscovered.join(', '):'None (all visited)';
+        steps.push({stepNum,activeNode:u,scanned:adj[u].join(', ')||'∅',discovered:discSummary,
+          frontier:[...queue],visited:[...visitedOrder],dist:{...dist},parent:{...parent},
+          desc:`Step ${stepNum}: Dequeued ${u}. Scanned Adj[${u}]=[${adj[u].join(', ')}]. Discovered: ${discSummary}.`});
+        stepNum++;
+      }
+      return steps;
+    }
+
+    function generateDFSTrace(source) {
+      const adj=buildAdjacencyList(), ids=Object.keys(adj);
+      const visited={}, dist={}, parent={};
+      ids.forEach(id=>{ visited[id]=false; dist[id]='∞'; parent[id]='NIL'; });
+      const steps=[], visitedOrder=[], stack=[source];
+      steps.push({stepNum:0,activeNode:null,scanned:'—',discovered:`${source} pushed`,
+        frontier:[...stack],visited:[],dist:{...dist},parent:{...parent},
+        desc:`Step 0: Initialized DFS at source ${source}. Pushed ${source} onto LIFO Stack.`});
+      let stepNum=1;
+      while(stack.length>0){
+        const u=stack.pop();
+        if(!visited[u]){
+          visited[u]=true;
+          if(parent[u]==='NIL') dist[u]=0;
+          visitedOrder.push(u);
+          const unvisited=adj[u].filter(v=>!visited[v]);
+          for(let i=unvisited.length-1;i>=0;i--){
+            const v=unvisited[i];
+            if(parent[v]==='NIL'&&v!==source){ parent[v]=u; dist[v]=dist[u]+1; }
+            stack.push(v);
+          }
+          steps.push({stepNum,activeNode:u,scanned:adj[u].join(', ')||'∅',
+            discovered:unvisited.length?`Pushed [${unvisited.join(', ')}]`:'Backtrack',
+            frontier:[...stack],visited:[...visitedOrder],dist:{...dist},parent:{...parent},
+            desc:`Step ${stepNum}: Popped ${u} and marked visited. Pushed unvisited: [${unvisited.join(', ')||'None'}].`});
+          stepNum++;
+        }
+      }
+      return steps;
+    }
+
+    function selectMode(mode) {
+      currentMode=mode;
+      const dark=document.documentElement.classList.contains('dark');
+      const inactive=`py-1.5 px-2 rounded-lg text-xs font-semibold text-slate-600 ${dark?'dark:text-slate-300':''} hover:text-slate-900 transition`;
+      ['BFS','DFS','PATH'].forEach(m=>{
+        const btn=document.getElementById(`modeBtn${m}`);
+        btn.className = m===mode
+          ? 'py-1.5 px-2 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-sm transition'
+          : `py-1.5 px-2 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition`;
+      });
+      document.getElementById('dsTitle').textContent = mode==='DFS'?'LIFO Stack (Bottom → Top)':'FIFO Queue (Front → Rear)';
+      prepareTraversal();
+      if(mode==='PATH'){ computeShortestPath(); currentStepIndex=traceSteps.length-1; renderTraversalStep(); }
+    }
+
+    function onSourceTargetChange() {
+      const src=document.getElementById('algoSourceSelect').value;
+      const tgt=document.getElementById('algoTargetSelect').value;
+      document.getElementById('pathStartSelect').value=src;
+      document.getElementById('pathEndSelect').value=tgt;
+      prepareTraversal(); computeShortestPath();
+    }
+
+    function activateShortestPathMode() {
+      const s=document.getElementById('pathStartSelect').value;
+      const t=document.getElementById('pathEndSelect').value;
+      document.getElementById('algoSourceSelect').value=s;
+      document.getElementById('algoTargetSelect').value=t;
+      selectMode('PATH');
+    }
+
+    function prepareTraversal() {
+      stopPlay();
+      const source=document.getElementById('algoSourceSelect').value||vertices[0]?.id;
+      if(!source) return;
+      traceSteps=currentMode==='DFS'?generateDFSTrace(source):generateBFSTrace(source);
+      currentStepIndex=0;
+      renderTraversalStep();
+      renderFullTraceTable();
+    }
+
+    function renderTraversalStep() {
+      if(!traceSteps.length) return;
+      const step=traceSteps[currentStepIndex];
+      const modeLabel=currentMode==='PATH'?'BFS Geodesic':currentMode;
+      document.getElementById('stepCounterLabel').textContent=`Step ${currentStepIndex} / ${traceSteps.length-1} (${modeLabel})`;
+      document.getElementById('activeVertexBadge').textContent=`Current: ${step.activeNode||'Init'}`;
+      document.getElementById('stepDescription').textContent=step.desc;
+
+      const dsCont=document.getElementById('dsContent');
+      dsCont.innerHTML=step.frontier.length===0
+        ? '<span class="text-slate-400">[ Empty ]</span>'
+        : step.frontier.map(id=>`<span class="px-2 py-0.5 rounded bg-cyan-100 dark:bg-cyan-900/40 border border-cyan-300 dark:border-cyan-700 text-cyan-900 dark:text-cyan-300 font-bold">${id}</span>`).join('');
+
+      document.getElementById('visitedContent').textContent=step.visited.length?`{ ${step.visited.join(', ')} }`:'∅';
+
+      const tbody=document.getElementById('stateTableBody');
+      const sortedIds=vertices.map(v=>v.id).sort((a,b)=>a.localeCompare(b));
+      tbody.innerHTML=sortedIds.map(id=>{
+        const isVisited=step.visited.includes(id), isInFrontier=step.frontier.includes(id);
+        const isActive = id===step.activeNode;
+        let chip='<span class="chip chip-unvisited">Unvisited</span>';
+        if(currentMode==='PATH'&&highlightedPathNodes.has(id))
+          chip='<span class="chip chip-path">On Path</span>';
+        else if(isActive)
+          chip='<span class="chip chip-active">Active</span>';
+        else if(isInFrontier)
+          chip='<span class="chip chip-queued">Queued</span>';
+        else if(isVisited)
+          chip='<span class="chip chip-visited">Visited</span>';
+        return `<tr${isActive?' class="row-active"':''}>
+          <td class="md-cell-id col-nowrap">${id}</td>
+          <td>${chip}</td>
+          <td class="md-cell-mono col-num">${step.dist[id]}</td>
+          <td class="md-cell-mono col-num">${step.parent[id]}</td>
+        </tr>`;
+      }).join('');
+
+      syncCytoscapeStyles();
+      highlightActiveTraceRow();
+    }
+
+    function stepForward() { if(currentStepIndex<traceSteps.length-1){ currentStepIndex++; renderTraversalStep(); } else stopPlay(); }
+    function stepBackward() { stopPlay(); if(currentStepIndex>0){ currentStepIndex--; renderTraversalStep(); } }
+    function runAllSteps() { stopPlay(); currentStepIndex=traceSteps.length-1; renderTraversalStep(); }
+
+    function togglePlay() {
+      if(playInterval){ stopPlay(); return; }
+      if(currentStepIndex>=traceSteps.length-1) currentStepIndex=0;
+      document.getElementById('playPauseBtn').textContent='⏸ Pause';
+      playInterval=setInterval(()=>{
+        if(currentStepIndex<traceSteps.length-1){ currentStepIndex++; renderTraversalStep(); }
+        else stopPlay();
+      },900);
+    }
+    function stopPlay() {
+      if(playInterval){ clearInterval(playInterval); playInterval=null; }
+      const btn=document.getElementById('playPauseBtn');
+      if(btn) btn.textContent='▶ Play';
+    }
+
+    // =========================================================================
+    // 7. SHORTEST PATH
+    // =========================================================================
+    function computeShortestPath() {
+      const start=document.getElementById('pathStartSelect').value;
+      const end=document.getElementById('pathEndSelect').value;
+      if(!start||!end) return;
+      const adj=buildAdjacencyList();
+      const visited=new Set([start]), parent={[start]:null}, queue=[start];
+      while(queue.length>0){
+        const u=queue.shift();
+        if(u===end) break;
+        adj[u].forEach(v=>{ if(!visited.has(v)){ visited.add(v); parent[v]=u; queue.push(v); } });
+      }
+      highlightedPathEdges.clear(); highlightedPathNodes.clear();
+      const resultEl=document.getElementById('shortestPathResult');
+      if(!visited.has(end)){
+        resultEl.textContent=`d(${start},${end}) = ∞ · Unreachable`;
+        resultEl.className='text-xs font-mono font-bold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-700 px-2.5 py-1 rounded-lg';
+        syncCytoscapeStyles(); return;
+      }
+      const path=[]; let curr=end;
+      while(curr!==null){ path.unshift(curr); highlightedPathNodes.add(curr); if(parent[curr]!==null) highlightedPathEdges.add(edgeKey(curr,parent[curr])); curr=parent[curr]; }
+      resultEl.textContent=`d(${start},${end}) = ${path.length-1} · ${path.join(' → ')}`;
+      resultEl.className='text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 px-2.5 py-1 rounded-lg';
+      syncCytoscapeStyles();
+    }
+
+    // =========================================================================
+    // 8. RENDER TABLES & INSPECTOR
+    // =========================================================================
+    function refreshAll(rebuildGraph=false) {
+      const analytics=computeGraphAnalytics();
+      document.getElementById('statOrder').textContent=analytics.n;
+      document.getElementById('statSize').textContent=analytics.m;
+      document.getElementById('statHandshake').textContent=`${analytics.sumDegrees} = 2|E|`;
+      document.getElementById('statAvgDeg').textContent=analytics.avgDegree.toFixed(2);
+      document.getElementById('statDensity').textContent=`${(analytics.density*100).toFixed(2)}%`;
+      document.getElementById('statComponents').textContent=analytics.components;
+      document.getElementById('statDiameter').textContent=analytics.diameter;
+      document.getElementById('matrixTotalSum').textContent=`${analytics.sumDegrees} = 2|E|`;
+
+      const sortedIds=vertices.map(v=>v.id).sort((a,b)=>a.localeCompare(b));
+      ['edgeUSelect','edgeVSelect','algoSourceSelect','algoTargetSelect','pathStartSelect','pathEndSelect'].forEach(selId=>{
+        const el=document.getElementById(selId), prev=el.value;
+        el.innerHTML=sortedIds.map(id=>`<option value="${id}">${id}</option>`).join('');
+        if(sortedIds.includes(prev)) el.value=prev;
+      });
+      if(sortedIds.length>=2&&document.getElementById('edgeUSelect').value===document.getElementById('edgeVSelect').value)
+        document.getElementById('edgeVSelect').value=sortedIds[1];
+      if(!sortedIds.includes(selectedVertex)) selectedVertex=sortedIds[0]||'';
+
+      updateInspector(analytics);
+      renderAdjacencyViews(sortedIds,analytics.adj);
+      renderCentralityTable(sortedIds,analytics);
+      if(rebuildGraph) rebuildCytoscapeGraph(false);
+      prepareTraversal();
+      computeShortestPath();
+    }
+
+    function updateInspector(analytics) {
+      if(!selectedVertex||!analytics.nodeMetrics[selectedVertex]) return;
+      const m=analytics.nodeMetrics[selectedVertex];
+      document.getElementById('inspectedBadge').textContent=`Node ${m.id}`;
+      document.getElementById('btnSelectedLabel').textContent=m.id;
+      document.getElementById('inspDeg').textContent=m.deg;
+      document.getElementById('inspNeighbors').textContent=m.neighbors.length?`{ ${m.neighbors.join(', ')} }`:'∅ (Isolated)';
+      document.getElementById('inspNormDeg').textContent=m.normDeg.toFixed(3);
+      document.getElementById('inspCloseness').textContent=m.closeness.toFixed(3);
+      document.getElementById('inspBetweenness').textContent=m.betweenness.toFixed(2);
+      document.getElementById('inspClustering').textContent=m.clustering.toFixed(3);
+      let role='Core Member';
+      if(m.deg===0) role='Isolated Vertex (deg=0)';
+      else if(m.deg===1) role='Pendant Leaf Vertex (deg=1)';
+      else if(m.betweenness>=5) role='Critical Gatekeeper (Max C_B)';
+      else if(m.closeness>=0.6) role='Fastest Broadcaster (Max C_C)';
+      else if(m.clustering>0) role='Clustered Triangle Member';
+      document.getElementById('inspRole').textContent=role;
+    }
+
+    function renderFullTraceTable() {
+      const source=document.getElementById('algoSourceSelect').value||'A';
+      document.getElementById('traceTableHeading').textContent=`Complete ${currentMode==='DFS'?'DFS':'BFS'} Step-by-Step Execution Trace (Source: ${source})`;
+      const finalStep=traceSteps[traceSteps.length-1];
+      if(finalStep&&currentMode!=='DFS'){
+        const levels={};
+        Object.entries(finalStep.dist).forEach(([v,d])=>{ if(d!=='∞'){ if(!levels[d]) levels[d]=[]; levels[d].push(v); } });
+        const levelStr=Object.keys(levels).sort((a,b)=>Number(a)-Number(b)).map(l=>`L${l}={${levels[l].join(',')}}`).join(', ');
+        document.getElementById('traceSummaryBadge').textContent=`Levels: ${levelStr}`;
+      } else {
+        document.getElementById('traceSummaryBadge').textContent=`Order: ${finalStep?finalStep.visited.join(' → '):''}`;
+      }
+      const tbody=document.getElementById('fullTraceTableBody');
+      tbody.innerHTML=traceSteps.map((s,idx)=>{
+        const isActive = idx===currentStepIndex;
+        return `<tr id="traceRow_${idx}" onclick="stopPlay();currentStepIndex=${idx};renderTraversalStep();"
+          class="cursor-pointer${isActive?' row-active font-semibold':''}">
+          <td class="md-cell-id col-center">${s.stepNum}</td>
+          <td class="md-cell-active col-nowrap">${s.activeNode||'—'}</td>
+          <td class="md-cell-mono col-nowrap">${s.scanned}</td>
+          <td>${s.discovered}</td>
+          <td class="md-cell-queued">${s.frontier.length?'[ '+s.frontier.join(', ')+' ]':'[ — ]'}</td>
+          <td class="md-cell-visited">${s.visited.length?'{ '+s.visited.join(', ')+' }':'∅'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function highlightActiveTraceRow() {
+      traceSteps.forEach((_,idx)=>{
+        const row=document.getElementById(`traceRow_${idx}`); if(!row) return;
+        if(idx===currentStepIndex){
+          row.classList.add('row-active','font-semibold');
+        } else {
+          row.classList.remove('row-active','font-semibold');
+        }
+      });
+    }
+
+    function renderAdjacencyViews(sortedIds, adj) {
+      // Build colgroup: row-label col + one col per vertex + degree col
+      const colW = Math.max(32, Math.min(48, Math.floor(360 / (sortedIds.length + 2))));
+      const colgroupCols =
+        `<col style="width:48px">` +
+        sortedIds.map(()=>`<col style="width:${colW}px">`).join('') +
+        `<col style="width:60px">`;
+
+      let html = `<table class="md-table" style="table-layout:fixed">
+        <colgroup>${colgroupCols}</colgroup>
+        <thead><tr>
+          <th style="text-align:left">V</th>
+          ${sortedIds.map(id=>`<th class="col-center">${id}</th>`).join('')}
+          <th class="col-center">deg(v)</th>
+        </tr></thead>
+        <tbody>`;
+
+      sortedIds.forEach(r => {
+        html += `<tr>
+          <td class="md-cell-id" style="text-align:left">${r}</td>`;
+        sortedIds.forEach(c => {
+          const val = edgeExists(r, c) ? 1 : 0;
+          html += `<td class="${val===1?'mat-cell-one':'mat-cell-zero'} col-center">${val}</td>`;
+        });
+        html += `<td class="mat-cell-deg col-center">${adj[r].length}</td></tr>`;
+      });
+      html += `</tbody></table>`;
+      document.getElementById('adjMatrixContainer').innerHTML = html;
+
+      // Adjacency List — styled cards
+      document.getElementById('adjListContainer').innerHTML = sortedIds.map(id => `
+        <div class="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border"
+          style="background:var(--surface-1);border-color:var(--line)">
+          <span class="md-cell-id" style="min-width:28px">${id}</span>
+          <span style="flex:1;color:var(--muted-text);font-size:12px;font-family:'JetBrains Mono',monospace">
+            → [ ${adj[id].length ? adj[id].join(', ') : '∅'} ]
+          </span>
+          <span style="font-size:11px;padding:2px 10px;border-radius:999px;font-weight:700;
+            background:var(--accent-soft);color:var(--accent);font-family:'JetBrains Mono',monospace">
+            ${adj[id].length}
+          </span>
+        </div>`).join('');
+    }
+
+    function renderCentralityTable(sortedIds, analytics) {
+      const maxCl=Math.max(...sortedIds.map(id=>analytics.nodeMetrics[id].closeness));
+      const maxBw=Math.max(...sortedIds.map(id=>analytics.nodeMetrics[id].betweenness));
+      const maxDg=Math.max(...sortedIds.map(id=>analytics.nodeMetrics[id].deg));
+
+      // Role label + colour class
+      function roleInfo(m) {
+        if(m.deg===0) return {label:'Isolated Vertex',       cls:'chip chip-unvisited'};
+        if(m.deg===1) return {label:'Pendant Leaf',          cls:'chip chip-queued'};
+        if(m.betweenness===maxBw&&maxBw>0) return {label:'Gatekeeper (Max C\u1D00)',cls:'chip chip-active'};
+        if(m.closeness===maxCl&&maxCl>0)   return {label:'Fastest Spreader',    cls:'chip chip-path'};
+        if(m.clustering>0)                 return {label:'Triangle Hub',         cls:'chip chip-visited'};
+        return {label:'Connector', cls:'chip chip-unvisited'};
+      }
+
+      document.getElementById('centralityTableBody').innerHTML=sortedIds.map(id=>{
+        const m=analytics.nodeMetrics[id];
+        const clBest=m.closeness===maxCl&&maxCl>0;
+        const bwBest=m.betweenness===maxBw&&maxBw>0;
+        const dgBest=m.deg===maxDg;
+        const ri=roleInfo(m);
+
+        return `<tr>
+          <td class="md-cell-id col-nowrap">${m.id}</td>
+          <td class="md-cell-mono md-cell-muted">{ ${m.neighbors.join(', ')||'∅'} }</td>
+          <td class="md-cell-mono col-num${dgBest?' md-cell-best':''}">${m.deg}</td>
+          <td class="md-cell-mono col-num">${m.normDeg.toFixed(3)}</td>
+          <td class="md-cell-mono col-num">${m.distSum}</td>
+          <td class="md-cell-mono col-num${clBest?' md-cell-visited md-cell-best':''}">${m.closeness.toFixed(3)}</td>
+          <td class="md-cell-mono col-num${bwBest?' md-cell-active md-cell-best':''}">${m.betweenness.toFixed(2)}</td>
+          <td class="md-cell-mono col-num" style="color:var(--brand)">${m.clustering.toFixed(3)}</td>
+          <td><span class="${ri.cls}">${ri.label}</span></td>
+        </tr>`;
+      }).join('');
+    }
+
+    function switchAnalyticalTab(tabName) {
+      const mapping={
+        matrix:    ['panelMatrix',    'tabBtnMatrix'],
+        centrality:['panelCentrality','tabBtnCentrality']
+      };
+      Object.entries(mapping).forEach(([key,[panelId,btnId]])=>{
+        const panel=document.getElementById(panelId);
+        const btn=document.getElementById(btnId);
+        const active=key===tabName;
+        panel.classList.toggle('hidden', !active);
+        btn.setAttribute('aria-selected', active);
+        btn.classList.toggle('active', active);
+      });
+    }
+
+    // =========================================================================
+    // 9. INIT
+    // =========================================================================
+    window.onload = function () {
+      applyStoredTheme();
+
+      const data=getDefaultGraphData();
+      vertices=data.vertices; edges=data.edges; selectedVertex='A';
+
+      initCytoscape();
+      refreshAll(false);
+
+      document.getElementById('algoSourceSelect').value='A';
+      document.getElementById('algoTargetSelect').value='H';
+      document.getElementById('pathStartSelect').value='A';
+      document.getElementById('pathEndSelect').value='H';
+
+      selectMode('BFS');
+      computeShortestPath();
+    };
+  </script>
+</body>
+</html>
